@@ -46,6 +46,13 @@ impl<'a, T: ParseFromParameter> ApiExtractor<'a> for Query<T> {
         Some(T::schema_ref())
     }
 
+    fn __query_parameters(
+        explode: bool,
+        style: Option<crate::ParameterStyle>,
+    ) -> Option<Vec<crate::registry::MetaOperationParam>> {
+        T::__query_object_fields(explode, style)
+    }
+
     fn param_raw_type(&self) -> Option<&Self::ParamRawType> {
         self.0.as_raw_value()
     }

@@ -63,21 +63,32 @@ struct Pet {
 ## Object as a query parameter
 
 An object annotated with `#[oai(query)]` can be extracted from the query string
-as a single [`Query`](crate::param::Query) parameter. Every parsed field must
-implement [`ParseFromParameter`](crate::types::ParseFromParameter).
+via [`Query`](crate::param::Query). Every parsed field must implement
+[`ParseFromParameter`](crate::types::ParseFromParameter) (fields marked
+`#[oai(skip)]` are exempt).
 
-The parameter `style` controls how the fields are serialized: `deepObject`
-reads `?filter[name]=bob&filter[age]=42`, while the default `form` style reads
-the fields as top-level keys (`?name=bob&age=42`).
+The parameter `style` controls how the object is represented:
+
+- **`form`** (the default): the object is *exploded* into one query parameter
+  per field, read from top-level keys (`?name=bob&age=42`). This is the
+  representation most tools (e.g. Swagger UI) render as individual inputs.
+- **`deepObject`**: the object stays a single parameter and is read from nested
+  keys (`?filter[name]=bob&filter[age]=42`).
+
+Field optionality follows the poem-openapi rules, **not** serde: a required
+field (e.g. `u32`) is a required parameter unless it is an `Option<_>` or has an
+`#[oai(default)]`. Note that `#[serde(default)]` has no effect here.
 
 ```rust
 use poem_openapi::{Object, OpenApi, param::Query, payload::Json};
 
+// Exploded into `name`, `limit` and `tags` query parameters (form style).
 #[derive(Object)]
 #[oai(query)]
 struct Filter {
     name: String,
-    age: u32,
+    #[oai(default)]
+    limit: u32,
     tags: Vec<String>,
     nickname: Option<String>,
 }
@@ -87,10 +98,7 @@ struct Api;
 #[OpenApi]
 impl Api {
     #[oai(path = "/search", method = "get")]
-    async fn search(
-        &self,
-        #[oai(style = "deep_object")] filter: Query<Filter>,
-    ) -> Json<Vec<String>> {
+    async fn search(&self, filter: Query<Filter>) -> Json<Vec<String>> {
         Json(filter.0.tags)
     }
 }

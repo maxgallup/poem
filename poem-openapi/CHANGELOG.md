@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # [Unreleased]
 
-- Allow objects (`#[derive(Object)]` with `#[oai(query)]`) to be used as a single query parameter via `Query<T>`, serialized according to the parameter `style` (`deepObject` / `form`) [#241](https://github.com/poem-web/poem/issues/241)
+- Allow objects (`#[derive(Object)]` with `#[oai(query)]`) to be used as query parameters via `Query<T>` [#241](https://github.com/poem-web/poem/issues/241). With the default `form` style each field is exposed as its own query parameter; with `deepObject` style the object is a single parameter read from `name[field]` keys.
 
 # [5.1.15] 2025-06-06
 

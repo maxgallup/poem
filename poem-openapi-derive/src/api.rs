@@ -410,27 +410,34 @@ fn generate_operation(
         let deprecated = operation_param.deprecated;
         params_meta.push(quote! {
             if <#arg_ty as #crate_name::ApiExtractor>::TYPES.contains(&#crate_name::ApiExtractorType::Parameter) {
-                let mut original_schema = <#arg_ty as #crate_name::ApiExtractor>::param_schema_ref().unwrap();
+                match <#arg_ty as #crate_name::ApiExtractor>::__query_parameters(#explode, #style) {
+                    // The extractor expands into multiple parameters (e.g. an
+                    // object bound as form-style query parameters).
+                    ::std::option::Option::Some(exploded) => ::std::iter::Extend::extend(&mut params, exploded),
+                    ::std::option::Option::None => {
+                        let mut original_schema = <#arg_ty as #crate_name::ApiExtractor>::param_schema_ref().unwrap();
 
-                let mut patch_schema = {
-                    let mut schema = #crate_name::registry::MetaSchema::ANY;
-                    schema.default = #param_meta_default;
-                    schema.example = #param_meta_example;
-                    #validators_update_meta
-                    schema
-                };
+                        let mut patch_schema = {
+                            let mut schema = #crate_name::registry::MetaSchema::ANY;
+                            schema.default = #param_meta_default;
+                            schema.example = #param_meta_example;
+                            #validators_update_meta
+                            schema
+                        };
 
-                let meta_param = #crate_name::registry::MetaOperationParam {
-                    name: ::std::string::ToString::to_string(#param_name),
-                    schema: original_schema.merge(patch_schema),
-                    in_type: <#arg_ty as #crate_name::ApiExtractor>::param_in().unwrap(),
-                    description: #param_desc,
-                    required: <#arg_ty as #crate_name::ApiExtractor>::PARAM_IS_REQUIRED && !#has_default,
-                    deprecated: #deprecated,
-                    explode: #explode,
-                    style: #style,
-                };
-                params.push(meta_param);
+                        let meta_param = #crate_name::registry::MetaOperationParam {
+                            name: ::std::string::ToString::to_string(#param_name),
+                            schema: original_schema.merge(patch_schema),
+                            in_type: <#arg_ty as #crate_name::ApiExtractor>::param_in().unwrap(),
+                            description: #param_desc,
+                            required: <#arg_ty as #crate_name::ApiExtractor>::PARAM_IS_REQUIRED && !#has_default,
+                            deprecated: #deprecated,
+                            explode: #explode,
+                            style: #style,
+                        };
+                        params.push(meta_param);
+                    }
+                }
             }
         });
 

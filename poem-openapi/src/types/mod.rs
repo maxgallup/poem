@@ -26,8 +26,8 @@ pub use string_types::Hostname;
 pub use string_types::Password;
 
 use crate::{
-    base::{ExtractParamOptions, UrlQuery},
-    registry::{MetaSchemaRef, Registry},
+    base::{ExtractParamOptions, ParameterStyle, UrlQuery},
+    registry::{MetaOperationParam, MetaSchemaRef, Registry},
 };
 
 /// Represents an OpenAPI type.
@@ -164,6 +164,24 @@ pub trait ParseFromParameter: Sized + Type {
                 None => Self::parse_from_parameters(std::iter::empty::<&str>()),
             }
         }
+    }
+
+    /// Returns the metadata of the individual query parameters when this type
+    /// should be represented as multiple query parameters rather than a single
+    /// one.
+    ///
+    /// The default implementation returns `None`, meaning the type is a single
+    /// query parameter. Object types (structs deriving
+    /// [`Object`](macro@crate::Object) with `#[oai(query)]`) override this to
+    /// expand each of their fields into a separate query parameter when the
+    /// `style` is `form` (the default). With the `deepObject` style they keep
+    /// being represented as a single object parameter and return `None`.
+    #[doc(hidden)]
+    fn __query_object_fields(
+        _explode: bool,
+        _style: Option<ParameterStyle>,
+    ) -> Option<Vec<MetaOperationParam>> {
+        None
     }
 }
 

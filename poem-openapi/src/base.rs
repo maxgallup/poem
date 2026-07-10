@@ -12,8 +12,8 @@ use serde::Serialize;
 use crate::{
     payload::Payload,
     registry::{
-        MetaApi, MetaMediaType, MetaOAuthScope, MetaParamIn, MetaRequest, MetaResponse,
-        MetaResponses, MetaSchemaRef, MetaWebhook, Registry,
+        MetaApi, MetaMediaType, MetaOAuthScope, MetaOperationParam, MetaParamIn, MetaRequest,
+        MetaResponse, MetaResponses, MetaSchemaRef, MetaWebhook, Registry,
     },
 };
 
@@ -240,6 +240,20 @@ pub trait ApiExtractor<'a>: Sized {
 
     /// Returns the schema of the parameter if this extractor is parameter.
     fn param_schema_ref() -> Option<MetaSchemaRef> {
+        None
+    }
+
+    /// Returns the metadata of the individual parameters when this extractor
+    /// should be represented as multiple parameters rather than a single one.
+    ///
+    /// The default implementation returns `None`, meaning the extractor maps to
+    /// a single parameter. [`Query`](crate::param::Query) overrides this to
+    /// expand object types into one query parameter per field.
+    #[doc(hidden)]
+    fn __query_parameters(
+        _explode: bool,
+        _style: Option<ParameterStyle>,
+    ) -> Option<Vec<MetaOperationParam>> {
         None
     }
 

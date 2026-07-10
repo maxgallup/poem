@@ -169,10 +169,28 @@ async fn query_object_form() {
         }
     }
 
+    // With the default (form) style, the object is exploded into one query
+    // parameter per field instead of a single object parameter.
+    let meta: MetaApi = Api::meta().remove(0);
+    let params = &meta.paths[0].operations[0].params;
+    assert_eq!(params.len(), 2);
+    assert_eq!(params[0].name, "page");
+    assert_eq!(params[0].in_type, poem_openapi::registry::MetaParamIn::Query);
+    assert!(params[0].required);
+    assert_eq!(params[0].style, None);
+    assert_eq!(params[1].name, "per_page");
+    assert!(params[1].required);
+
     let ep = OpenApiService::new(Api, "test", "1.0");
+
+    // The spec exposes the two parameters directly (not a JSON object).
+    let spec = ep.spec();
+    assert!(spec.contains("\"name\": \"page\""));
+    assert!(spec.contains("\"name\": \"per_page\""));
+
     let cli = TestClient::new(ep);
 
-    // With the default (form) style, fields are bound from top-level keys.
+    // Fields are bound from top-level keys.
     let resp = cli
         .get("/list")
         .query("page", &"2")
@@ -229,6 +247,73 @@ async fn query_object_flatten() {
         "name": "bob",
         "page": 1,
         "per_page": 10,
+    }))
+    .await;
+}
+
+#[tokio::test]
+async fn query_object_explode_with_enum_and_skip() {
+    use poem_openapi::Enum;
+
+    #[derive(Enum, Debug, Eq, PartialEq)]
+    #[oai(rename_all = "lowercase")]
+    enum LogicOperator {
+        And,
+        Or,
+    }
+
+    #[derive(Debug, Eq, PartialEq)]
+    struct FilterGroup(String);
+
+    #[derive(Object, Debug, Eq, PartialEq)]
+    #[oai(query)]
+    struct PageQuery {
+        #[oai(default)]
+        page: u32,
+        #[oai(default = "default_limit")]
+        limit: u32,
+        logic: LogicOperator,
+        // Not a query parameter and not required to implement
+        // `ParseFromParameter`.
+        #[oai(skip)]
+        group: Vec<FilterGroup>,
+        dedup: Option<String>,
+    }
+
+    fn default_limit() -> u32 {
+        20
+    }
+
+    struct Api;
+
+    #[OpenApi]
+    impl Api {
+        #[oai(path = "/page", method = "get")]
+        async fn page(&self, q: Query<PageQuery>) -> Json<Value> {
+            Json(q.0.to_json().unwrap())
+        }
+    }
+
+    // The skipped field is excluded; the remaining four fields become params.
+    let meta: MetaApi = Api::meta().remove(0);
+    let names: Vec<_> = meta.paths[0].operations[0]
+        .params
+        .iter()
+        .map(|p| p.name.as_str())
+        .collect();
+    assert_eq!(names, ["page", "limit", "logic", "dedup"]);
+
+    let ep = OpenApiService::new(Api, "test", "1.0");
+    let cli = TestClient::new(ep);
+
+    // Defaults apply for omitted fields; `logic` (required enum) is provided.
+    let resp = cli.get("/page").query("logic", &"or").send().await;
+    resp.assert_status_is_ok();
+    resp.assert_json(serde_json::json!({
+        "page": 0,
+        "limit": 20,
+        "logic": "or",
+        "dedup": null,
     }))
     .await;
 }

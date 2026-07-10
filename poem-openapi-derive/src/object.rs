@@ -10,7 +10,10 @@ use syn::{Attribute, DeriveInput, Error, Generics, Path, Type, ext::IdentExt};
 use crate::{
     common_args::{DefaultValue, ExternalDocument, RenameRule, apply_rename_rule_field},
     error::GeneratorResult,
-    utils::{create_object_name, get_crate_name, get_description, optional_literal},
+    utils::{
+        create_object_name, get_crate_name, get_description, optional_literal,
+        optional_literal_string,
+    },
     validators::Validators,
 };
 
@@ -109,6 +112,7 @@ pub(crate) fn generate(args: DeriveInput) -> GeneratorResult<TokenStream> {
     let description = get_description(&args.attrs)?;
     let mut deserialize_fields = Vec::new();
     let mut query_deserialize_fields = Vec::new();
+    let mut query_param_metas = Vec::new();
     let mut serialize_fields = Vec::new();
     let mut register_types = Vec::new();
     let mut fields = Vec::new();
@@ -156,6 +160,7 @@ pub(crate) fn generate(args: DeriveInput) -> GeneratorResult<TokenStream> {
             apply_rename_rule_field(args.rename_all, field_ident.unraw().to_string())
         });
         let field_description = get_description(&field.attrs)?;
+        let field_description_string = optional_literal_string(&field_description);
         let field_description = optional_literal(&field_description);
         let validators = field.validator.clone().unwrap_or_default();
         let validators_checker = validators.create_obj_field_checker(&crate_name, &field_name)?;
@@ -386,6 +391,37 @@ pub(crate) fn generate(args: DeriveInput) -> GeneratorResult<TokenStream> {
                     fields.push(#field_name);
                 }
             });
+
+            // Each field becomes its own query parameter when the object is
+            // exploded (form style).
+            query_param_metas.push(quote! {{
+                let original_schema = <#field_ty as #crate_name::types::Type>::schema_ref();
+                let patch_schema = {
+                    let mut schema = #crate_name::registry::MetaSchema::ANY;
+                    schema.default = #field_meta_default;
+                    schema.nullable = #nullable;
+                    schema.read_only = #read_only;
+                    schema.write_only = #write_only;
+                    schema.deprecated = #deprecated;
+
+                    if let ::std::option::Option::Some(field_description) = #field_description {
+                        schema.description = ::std::option::Option::Some(field_description);
+                    }
+                    #validators_update_meta
+                    schema
+                };
+
+                params.push(#crate_name::registry::MetaOperationParam {
+                    name: ::std::string::ToString::to_string(#field_name),
+                    schema: original_schema.merge(patch_schema),
+                    in_type: #crate_name::registry::MetaParamIn::Query,
+                    description: #field_description_string,
+                    required: <#field_ty as #crate_name::types::Type>::IS_REQUIRED && !#has_default,
+                    deprecated: #deprecated,
+                    explode: true,
+                    style: ::std::option::Option::None,
+                });
+            }});
         } else {
             meta_fields.push(quote! {
                 fields.extend(registry.create_fake_schema::<#field_ty>().properties);
@@ -395,6 +431,15 @@ pub(crate) fn generate(args: DeriveInput) -> GeneratorResult<TokenStream> {
             };
             required_fields.push(quote! {
                 fields.extend(registry.create_fake_schema::<#field_ty>().required);
+            });
+
+            // A flattened object contributes its own fields as query parameters.
+            query_param_metas.push(quote! {
+                if let ::std::option::Option::Some(nested) =
+                    <#field_ty as #crate_name::types::ParseFromParameter>::__query_object_fields(explode, style)
+                {
+                    ::std::iter::Extend::extend(&mut params, nested);
+                }
             });
         }
     }
@@ -596,6 +641,21 @@ pub(crate) fn generate(args: DeriveInput) -> GeneratorResult<TokenStream> {
                 ) -> #crate_name::types::ParseResult<Self> {
                     #(#query_deserialize_fields)*
                     ::std::result::Result::Ok(Self { #(#fields),* })
+                }
+
+                fn __query_object_fields(
+                    explode: bool,
+                    style: ::std::option::Option<#crate_name::ParameterStyle>,
+                ) -> ::std::option::Option<::std::vec::Vec<#crate_name::registry::MetaOperationParam>> {
+                    // `deepObject` keeps the single object parameter
+                    // representation (`name[field]=...`).
+                    if let ::std::option::Option::Some(#crate_name::ParameterStyle::DeepObject) = style {
+                        return ::std::option::Option::None;
+                    }
+
+                    let mut params = ::std::vec::Vec::new();
+                    #(#query_param_metas)*
+                    ::std::option::Option::Some(params)
                 }
             }
         }
