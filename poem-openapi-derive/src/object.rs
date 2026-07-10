@@ -79,6 +79,8 @@ struct ObjectArgs {
     #[darling(default)]
     example: bool,
     #[darling(default)]
+    query: bool,
+    #[darling(default)]
     external_docs: Option<ExternalDocument>,
     #[darling(default)]
     remote: Option<Path>,
@@ -106,6 +108,7 @@ pub(crate) fn generate(args: DeriveInput) -> GeneratorResult<TokenStream> {
     let oai_typename = args.rename.clone().unwrap_or_else(|| ident.to_string());
     let description = get_description(&args.attrs)?;
     let mut deserialize_fields = Vec::new();
+    let mut query_deserialize_fields = Vec::new();
     let mut serialize_fields = Vec::new();
     let mut register_types = Vec::new();
     let mut fields = Vec::new();
@@ -134,6 +137,9 @@ pub(crate) fn generate(args: DeriveInput) -> GeneratorResult<TokenStream> {
             deserialize_fields.push(quote! {
                 let #field_ident: #field_ty = ::std::default::Default::default();
             });
+            query_deserialize_fields.push(quote! {
+                let #field_ident: #field_ty = ::std::default::Default::default();
+            });
             fields.push(field_ident);
             continue;
         }
@@ -154,6 +160,17 @@ pub(crate) fn generate(args: DeriveInput) -> GeneratorResult<TokenStream> {
         let validators = field.validator.clone().unwrap_or_default();
         let validators_checker = validators.create_obj_field_checker(&crate_name, &field_name)?;
         let validators_update_meta = validators.create_update_meta(&crate_name)?;
+
+        // The query string key for this field, depending on the parameter style:
+        // `deepObject` nests the key as `name[field]`, every other style (e.g.
+        // `form`) uses the bare field name as a top-level key.
+        let query_field_key = quote! {
+            match opts.style {
+                ::std::option::Option::Some(#crate_name::ParameterStyle::DeepObject) =>
+                    ::std::format!("{}[{}]", opts.name, #field_name),
+                _ => ::std::string::ToString::to_string(#field_name),
+            }
+        };
 
         fields.push(field_ident);
 
@@ -190,6 +207,16 @@ pub(crate) fn generate(args: DeriveInput) -> GeneratorResult<TokenStream> {
                     #create_default_value
                 };
             });
+            query_deserialize_fields.push(quote! {
+                #[allow(non_snake_case)]
+                let #field_ident: #field_ty = {
+                    let __key = #query_field_key;
+                    if !query.get_all_case(&__key, opts.ignore_case).is_empty() {
+                        return Err(#crate_name::types::ParseError::custom(format!("properties `{}` is read only.", #field_name)));
+                    }
+                    #create_default_value
+                };
+            });
         } else if !*field.flatten {
             match &create_default_value {
                 Some(create_default_value) => {
@@ -206,6 +233,21 @@ pub(crate) fn generate(args: DeriveInput) -> GeneratorResult<TokenStream> {
                             }
                         };
                     });
+                    query_deserialize_fields.push(quote! {
+                        #[allow(non_snake_case)]
+                        let #field_ident: #field_ty = {
+                            let __key = #query_field_key;
+                            let __values = query.get_all_case(&__key, opts.ignore_case);
+                            if __values.is_empty() {
+                                #create_default_value
+                            } else {
+                                let value = <#field_ty as #crate_name::types::ParseFromParameter>::parse_from_parameters(__values)
+                                    .map_err(#crate_name::types::ParseError::propagate)?;
+                                #validators_checker
+                                value
+                            }
+                        };
+                    });
                 }
                 None => {
                     let deserialize_function = match field.deserialize_with {
@@ -217,6 +259,17 @@ pub(crate) fn generate(args: DeriveInput) -> GeneratorResult<TokenStream> {
                         #[allow(non_snake_case)]
                         let #field_ident: #field_ty = {
                             let value = #deserialize_function(obj.remove(#field_name))
+                                .map_err(#crate_name::types::ParseError::propagate)?;
+                            #validators_checker
+                            value
+                        };
+                    });
+                    query_deserialize_fields.push(quote! {
+                        #[allow(non_snake_case)]
+                        let #field_ident: #field_ty = {
+                            let __key = #query_field_key;
+                            let __values = query.get_all_case(&__key, opts.ignore_case);
+                            let value = <#field_ty as #crate_name::types::ParseFromParameter>::parse_from_parameters(__values)
                                 .map_err(#crate_name::types::ParseError::propagate)?;
                             #validators_checker
                             value
@@ -237,6 +290,24 @@ pub(crate) fn generate(args: DeriveInput) -> GeneratorResult<TokenStream> {
                 let #field_ident: #field_ty = {
                     #crate_name::types::ParseFromJSON::parse_from_json(::std::option::Option::Some(#crate_name::__private::serde_json::Value::Object(::std::clone::Clone::clone(&obj))))
                         .map_err(#crate_name::types::ParseError::propagate)?
+                };
+            });
+            // A flattened object binds its own fields from the same query string
+            // using the same style/name, so delegate to its query parser.
+            query_deserialize_fields.push(quote! {
+                #[allow(non_snake_case)]
+                let #field_ident: #field_ty = {
+                    <#field_ty as #crate_name::types::ParseFromParameter>::parse_from_query(
+                        query,
+                        &#crate_name::ExtractParamOptions {
+                            name: opts.name,
+                            ignore_case: opts.ignore_case,
+                            explode: opts.explode,
+                            style: opts.style,
+                            ..::std::default::Default::default()
+                        },
+                    )
+                    .map_err(#crate_name::types::ParseError::propagate)?
                 };
             });
         }
@@ -495,6 +566,43 @@ pub(crate) fn generate(args: DeriveInput) -> GeneratorResult<TokenStream> {
         }
     };
 
+    // Opt-in support for using an object as a single query parameter (e.g.
+    // `deepObject` or `form` style). This is gated behind `#[oai(query)]`
+    // because it requires every parsed field type to implement
+    // `ParseFromParameter`; generating it unconditionally would break objects
+    // that contain JSON-only fields.
+    let parse_from_parameter = if args.query {
+        // `Self: Type` is required for `ParseError<Self>`; the generic parameter
+        // bounds are already carried by `#impl_generics`.
+        let mut predicates = vec![quote!(Self: #crate_name::types::Type)];
+        if let Some(where_clause) = args.generics.where_clause.as_ref() {
+            for predicate in &where_clause.predicates {
+                predicates.push(quote!(#predicate));
+            }
+        }
+        let param_where_clause = quote!(where #(#predicates),*);
+
+        quote! {
+            impl #impl_generics #crate_name::types::ParseFromParameter for #ident #ty_generics #param_where_clause {
+                fn parse_from_parameter(_value: &str) -> #crate_name::types::ParseResult<Self> {
+                    ::std::result::Result::Err(#crate_name::types::ParseError::custom(
+                        "an object cannot be parsed from a single parameter value; use it as a query object parameter",
+                    ))
+                }
+
+                fn parse_from_query(
+                    query: &#crate_name::__private::UrlQuery,
+                    opts: &#crate_name::ExtractParamOptions<Self>,
+                ) -> #crate_name::types::ParseResult<Self> {
+                    #(#query_deserialize_fields)*
+                    ::std::result::Result::Ok(Self { #(#fields),* })
+                }
+            }
+        }
+    } else {
+        quote!()
+    };
+
     // remote
     let remote = if let Some(remote) = &args.remote {
         let fields = s
@@ -526,6 +634,7 @@ pub(crate) fn generate(args: DeriveInput) -> GeneratorResult<TokenStream> {
 
     Ok(quote! {
         #define_obj
+        #parse_from_parameter
         #remote
     })
 }

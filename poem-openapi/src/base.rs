@@ -91,6 +91,16 @@ impl UrlQuery {
     pub fn get(&self, name: &str) -> Option<&String> {
         self.get_all(name).next()
     }
+
+    /// Returns all values with the specified name, optionally matching the name
+    /// case-insensitively.
+    pub fn get_all_case<'a, 'b: 'a>(&'b self, name: &'a str, ignore_case: bool) -> Vec<&'b String> {
+        if ignore_case {
+            self.get_all_by(move |n| name.eq_ignore_ascii_case(n)).collect()
+        } else {
+            self.get_all(name).collect()
+        }
+    }
 }
 
 /// Options for the parameter extractor.

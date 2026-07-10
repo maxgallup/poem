@@ -1,6 +1,5 @@
 use std::ops::{Deref, DerefMut};
 
-use itertools::Either;
 use poem::{Request, RequestBody, Result};
 
 use crate::{
@@ -57,41 +56,24 @@ impl<'a, T: ParseFromParameter> ApiExtractor<'a> for Query<T> {
         param_opts: ExtractParamOptions<Self::ParamType>,
     ) -> Result<Self> {
         let url_query = request.extensions().get::<UrlQuery>().unwrap();
-        let mut values = if !param_opts.ignore_case {
-            Either::Left(url_query.get_all(param_opts.name))
-        } else {
-            Either::Right(url_query.get_all_by(|n| param_opts.name.eq_ignore_ascii_case(n)))
-        }
-        .peekable();
 
-        match &param_opts.default_value {
-            Some(default_value) if values.peek().is_none() => {
+        if let Some(default_value) = &param_opts.default_value {
+            if url_query
+                .get_all_case(param_opts.name, param_opts.ignore_case)
+                .is_empty()
+            {
                 return Ok(Self(default_value()));
             }
-            _ => {}
         }
 
-        if param_opts.explode {
-            ParseFromParameter::parse_from_parameters(values)
-                .map(Self)
-                .map_err(|err| {
-                    ParseParamError {
-                        name: param_opts.name,
-                        reason: err.into_message(),
-                    }
-                    .into()
-                })
-        } else {
-            let values = values.next().unwrap().split(',').map(|v| v.trim());
-            ParseFromParameter::parse_from_parameters(values)
-                .map(Self)
-                .map_err(|err| {
-                    ParseParamError {
-                        name: param_opts.name,
-                        reason: err.into_message(),
-                    }
-                    .into()
-                })
-        }
+        T::parse_from_query(url_query, &param_opts)
+            .map(Self)
+            .map_err(|err| {
+                ParseParamError {
+                    name: param_opts.name,
+                    reason: err.into_message(),
+                }
+                .into()
+            })
     }
 }

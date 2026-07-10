@@ -25,7 +25,10 @@ pub use string_types::Email;
 pub use string_types::Hostname;
 pub use string_types::Password;
 
-use crate::registry::{MetaSchemaRef, Registry};
+use crate::{
+    base::{ExtractParamOptions, UrlQuery},
+    registry::{MetaSchemaRef, Registry},
+};
 
 /// Represents an OpenAPI type.
 pub trait Type: Send + Sync {
@@ -136,6 +139,30 @@ pub trait ParseFromParameter: Sized + Type {
         match iter.next().as_ref().map(|item| item.as_ref()) {
             Some(value) => Self::parse_from_parameter(value),
             None => Err(ParseError::expected_input()),
+        }
+    }
+
+    /// Parse from the query string of a request.
+    ///
+    /// The default implementation collects the values whose name matches the
+    /// parameter name and delegates to
+    /// [`parse_from_parameters`](Self::parse_from_parameters), honoring the
+    /// `explode` option (when `explode` is `false` a single comma-separated
+    /// value is split into multiple values).
+    ///
+    /// Object types (structs deriving [`Object`](macro@crate::Object)) override
+    /// this to bind their fields from the query string according to the
+    /// parameter [`style`](crate::ParameterStyle), for example `deepObject`
+    /// (`?filter[name]=x&filter[age]=5`) or `form` (`?name=x&age=5`).
+    fn parse_from_query(query: &UrlQuery, options: &ExtractParamOptions<Self>) -> ParseResult<Self> {
+        let values = query.get_all_case(options.name, options.ignore_case);
+        if options.explode {
+            Self::parse_from_parameters(values)
+        } else {
+            match values.into_iter().next() {
+                Some(value) => Self::parse_from_parameters(value.split(',').map(|v| v.trim())),
+                None => Self::parse_from_parameters(std::iter::empty::<&str>()),
+            }
         }
     }
 }

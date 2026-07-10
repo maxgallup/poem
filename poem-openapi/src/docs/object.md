@@ -12,6 +12,7 @@ Define an OpenAPI object
 | write_only_all               | Set all fields openapi writeOnly property                                                                                                                                                                              | bool        | Y        |
 | deny_unknown_fields          | Always error during parsing when encountering unknown fields.                                                                                                                                                          | bool        | Y        |
 | example                      | Indicates that the object type has implemented `Example` trait                                                                                                                                                         | bool        | Y        |
+| query                        | Allow this object to be used as a single query parameter (`Query<T>`). Requires every parsed field to implement `ParseFromParameter`.                                                                                  | bool        | Y        |
 | external_docs                | Specify a external resource for extended documentation                                                                                                                                                                 | string      | Y        |
 | remote                       | Derive a remote object                                                                                                                                                                                                 | string      | Y        |
 | skip_serializing_if_is_none  | Skip serializing field if the value is none.                                                                                                                                                                           | bool        | Y        |
@@ -56,5 +57,41 @@ struct Pet {
 
     /// The name of this pet.
     name: String,
+}
+```
+
+## Object as a query parameter
+
+An object annotated with `#[oai(query)]` can be extracted from the query string
+as a single [`Query`](crate::param::Query) parameter. Every parsed field must
+implement [`ParseFromParameter`](crate::types::ParseFromParameter).
+
+The parameter `style` controls how the fields are serialized: `deepObject`
+reads `?filter[name]=bob&filter[age]=42`, while the default `form` style reads
+the fields as top-level keys (`?name=bob&age=42`).
+
+```rust
+use poem_openapi::{Object, OpenApi, param::Query, payload::Json};
+
+#[derive(Object)]
+#[oai(query)]
+struct Filter {
+    name: String,
+    age: u32,
+    tags: Vec<String>,
+    nickname: Option<String>,
+}
+
+struct Api;
+
+#[OpenApi]
+impl Api {
+    #[oai(path = "/search", method = "get")]
+    async fn search(
+        &self,
+        #[oai(style = "deep_object")] filter: Query<Filter>,
+    ) -> Json<Vec<String>> {
+        Json(filter.0.tags)
+    }
 }
 ```

@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [Unreleased]
+
+- Allow objects (`#[derive(Object)]` with `#[oai(query)]`) to be used as a single query parameter via `Query<T>`, serialized according to the parameter `style` (`deepObject` / `form`) [#241](https://github.com/poem-web/poem/issues/241)
+
 # [5.1.15] 2025-06-06
 
 - Bump `derive_more` to `2.0`

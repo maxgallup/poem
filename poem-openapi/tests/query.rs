@@ -4,7 +4,7 @@ use poem::{
     test::TestClient,
 };
 use poem_openapi::{
-    ApiResponse, OpenApi, OpenApiService,
+    ApiResponse, Object, OpenApi, OpenApiService,
     param::Query,
     payload::{Json, PlainText},
     registry::MetaApi,
@@ -65,4 +65,170 @@ async fn query_explode_false() {
     let resp = cli.post("/abc").send().await;
     resp.assert_status_is_ok();
     resp.assert_json(Value::Null).await;
+}
+
+#[tokio::test]
+async fn query_object_deep_object() {
+    #[derive(Object, Debug, Eq, PartialEq)]
+    #[oai(query)]
+    struct Filter {
+        name: String,
+        age: u32,
+        #[oai(default)]
+        tags: Vec<String>,
+        nickname: Option<String>,
+    }
+
+    struct Api;
+
+    #[OpenApi]
+    impl Api {
+        #[oai(path = "/search", method = "get")]
+        async fn search(
+            &self,
+            #[oai(style = "deep_object")] filter: Query<Filter>,
+        ) -> Json<Value> {
+            Json(filter.0.to_json().unwrap())
+        }
+    }
+
+    // The object is emitted as a single query parameter using `deepObject` style.
+    let meta: MetaApi = Api::meta().remove(0);
+    let param = &meta.paths[0].operations[0].params[0];
+    assert_eq!(param.name, "filter");
+    assert_eq!(param.style, Some(poem_openapi::ParameterStyle::DeepObject));
+
+    let ep = OpenApiService::new(Api, "test", "1.0");
+    let cli = TestClient::new(ep);
+
+    // Required + optional + array fields bind from `filter[...]` keys.
+    let resp = cli
+        .get("/search")
+        .query("filter[name]", &"bob")
+        .query("filter[age]", &"42")
+        .query("filter[tags]", &"a")
+        .query("filter[tags]", &"b")
+        .query("filter[nickname]", &"bobby")
+        .send()
+        .await;
+    resp.assert_status_is_ok();
+    resp.assert_json(serde_json::json!({
+        "name": "bob",
+        "age": 42,
+        "tags": ["a", "b"],
+        "nickname": "bobby",
+    }))
+    .await;
+
+    // Optional field omitted, defaulted array omitted.
+    let resp = cli
+        .get("/search")
+        .query("filter[name]", &"alice")
+        .query("filter[age]", &"30")
+        .send()
+        .await;
+    resp.assert_status_is_ok();
+    resp.assert_json(serde_json::json!({
+        "name": "alice",
+        "age": 30,
+        "tags": [],
+        "nickname": null,
+    }))
+    .await;
+
+    // Missing required field -> bad request.
+    let resp = cli.get("/search").query("filter[name]", &"x").send().await;
+    resp.assert_status(StatusCode::BAD_REQUEST);
+
+    // Invalid integer -> bad request.
+    let resp = cli
+        .get("/search")
+        .query("filter[name]", &"x")
+        .query("filter[age]", &"not-a-number")
+        .send()
+        .await;
+    resp.assert_status(StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn query_object_form() {
+    #[derive(Object, Debug, Eq, PartialEq)]
+    #[oai(query)]
+    struct Pagination {
+        page: u32,
+        per_page: u32,
+    }
+
+    struct Api;
+
+    #[OpenApi]
+    impl Api {
+        #[oai(path = "/list", method = "get")]
+        async fn list(&self, page: Query<Pagination>) -> Json<Value> {
+            Json(page.0.to_json().unwrap())
+        }
+    }
+
+    let ep = OpenApiService::new(Api, "test", "1.0");
+    let cli = TestClient::new(ep);
+
+    // With the default (form) style, fields are bound from top-level keys.
+    let resp = cli
+        .get("/list")
+        .query("page", &"2")
+        .query("per_page", &"25")
+        .send()
+        .await;
+    resp.assert_status_is_ok();
+    resp.assert_json(serde_json::json!({ "page": 2, "per_page": 25 })).await;
+}
+
+#[tokio::test]
+async fn query_object_flatten() {
+    #[derive(Object, Debug, Eq, PartialEq)]
+    #[oai(query)]
+    struct Page {
+        page: u32,
+        per_page: u32,
+    }
+
+    #[derive(Object, Debug, Eq, PartialEq)]
+    #[oai(query)]
+    struct Query1 {
+        name: String,
+        #[oai(flatten)]
+        page: Page,
+    }
+
+    struct Api;
+
+    #[OpenApi]
+    impl Api {
+        #[oai(path = "/list", method = "get")]
+        async fn list(
+            &self,
+            #[oai(style = "deep_object")] query: Query<Query1>,
+        ) -> Json<Value> {
+            Json(query.0.to_json().unwrap())
+        }
+    }
+
+    let ep = OpenApiService::new(Api, "test", "1.0");
+    let cli = TestClient::new(ep);
+
+    // Flattened fields are bound at the same level as the parent's own fields.
+    let resp = cli
+        .get("/list")
+        .query("query[name]", &"bob")
+        .query("query[page]", &"1")
+        .query("query[per_page]", &"10")
+        .send()
+        .await;
+    resp.assert_status_is_ok();
+    resp.assert_json(serde_json::json!({
+        "name": "bob",
+        "page": 1,
+        "per_page": 10,
+    }))
+    .await;
 }
