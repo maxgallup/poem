@@ -84,10 +84,7 @@ async fn query_object_deep_object() {
     #[OpenApi]
     impl Api {
         #[oai(path = "/search", method = "get")]
-        async fn search(
-            &self,
-            #[oai(style = "deep_object")] filter: Query<Filter>,
-        ) -> Json<Value> {
+        async fn search(&self, #[oai(style = "deep_object")] filter: Query<Filter>) -> Json<Value> {
             Json(filter.0.to_json().unwrap())
         }
     }
@@ -175,7 +172,10 @@ async fn query_object_form() {
     let params = &meta.paths[0].operations[0].params;
     assert_eq!(params.len(), 2);
     assert_eq!(params[0].name, "page");
-    assert_eq!(params[0].in_type, poem_openapi::registry::MetaParamIn::Query);
+    assert_eq!(
+        params[0].in_type,
+        poem_openapi::registry::MetaParamIn::Query
+    );
     assert!(params[0].required);
     assert_eq!(params[0].style, None);
     assert_eq!(params[1].name, "per_page");
@@ -198,7 +198,139 @@ async fn query_object_form() {
         .send()
         .await;
     resp.assert_status_is_ok();
-    resp.assert_json(serde_json::json!({ "page": 2, "per_page": 25 })).await;
+    resp.assert_json(serde_json::json!({ "page": 2, "per_page": 25 }))
+        .await;
+}
+
+#[tokio::test]
+async fn query_object_list_form() {
+    #[derive(Object, Debug, Eq, PartialEq)]
+    #[oai(query)]
+    struct MyData {
+        people: Vec<String>,
+    }
+
+    struct Api;
+
+    #[OpenApi]
+    impl Api {
+        #[oai(path = "/people", method = "get")]
+        async fn people(&self, data: Query<MyData>) -> Json<Value> {
+            Json(data.0.to_json().unwrap())
+        }
+    }
+
+    // With the default (form) style the list field is exposed as a single
+    // repeatable query parameter named after the field.
+    let meta: MetaApi = Api::meta().remove(0);
+    let params = &meta.paths[0].operations[0].params;
+    assert_eq!(params.len(), 1);
+    assert_eq!(params[0].name, "people");
+    assert_eq!(
+        params[0].in_type,
+        poem_openapi::registry::MetaParamIn::Query
+    );
+    // `form` style with an array is exploded: repeated `people=...` keys.
+    assert!(params[0].explode);
+    assert_eq!(params[0].style, None);
+
+    let ep = OpenApiService::new(Api, "test", "1.0");
+
+    // The spec advertises the parameter as an array of strings.
+    let spec = ep.spec();
+    assert!(spec.contains("\"name\": \"people\""));
+    assert!(spec.contains("\"type\": \"array\""));
+    assert!(spec.contains("\"explode\": true"));
+
+    let cli = TestClient::new(ep);
+
+    // Each repeated `people` key becomes one element of the list, in order.
+    let resp = cli
+        .get("/people")
+        .query("people", &"alice")
+        .query("people", &"bob")
+        .query("people", &"carol")
+        .send()
+        .await;
+    resp.assert_status_is_ok();
+    resp.assert_json(serde_json::json!({ "people": ["alice", "bob", "carol"] }))
+        .await;
+
+    // A single occurrence yields a one-element list.
+    let resp = cli.get("/people").query("people", &"alice").send().await;
+    resp.assert_status_is_ok();
+    resp.assert_json(serde_json::json!({ "people": ["alice"] }))
+        .await;
+
+    // Omitting the field entirely yields an empty list.
+    let resp = cli.get("/people").send().await;
+    resp.assert_status_is_ok();
+    resp.assert_json(serde_json::json!({ "people": [] }))
+        .await;
+
+    // Comma-separated values are NOT split under the (default) exploded form
+    // style: the whole string is a single element. Arrays must use repeated
+    // keys instead.
+    let resp = cli.get("/people").query("people", &"alice,bob").send().await;
+    resp.assert_status_is_ok();
+    resp.assert_json(serde_json::json!({ "people": ["alice,bob"] }))
+        .await;
+}
+
+#[tokio::test]
+async fn query_object_list_deep_object() {
+    #[derive(Object, Debug, Eq, PartialEq)]
+    #[oai(query)]
+    struct MyData {
+        people: Vec<String>,
+    }
+
+    struct Api;
+
+    #[OpenApi]
+    impl Api {
+        #[oai(path = "/people", method = "get")]
+        async fn people(&self, #[oai(style = "deep_object")] data: Query<MyData>) -> Json<Value> {
+            Json(data.0.to_json().unwrap())
+        }
+    }
+
+    // With `deepObject` the whole struct stays a single object parameter and
+    // list fields bind from repeated `data[people]=...` keys.
+    let meta: MetaApi = Api::meta().remove(0);
+    let param = &meta.paths[0].operations[0].params[0];
+    assert_eq!(param.name, "data");
+    assert_eq!(param.style, Some(poem_openapi::ParameterStyle::DeepObject));
+
+    let ep = OpenApiService::new(Api, "test", "1.0");
+    let cli = TestClient::new(ep);
+
+    // Repeated `data[people]` keys populate the list, in order.
+    let resp = cli
+        .get("/people")
+        .query("data[people]", &"alice")
+        .query("data[people]", &"bob")
+        .send()
+        .await;
+    resp.assert_status_is_ok();
+    resp.assert_json(serde_json::json!({ "people": ["alice", "bob"] }))
+        .await;
+
+    // A single occurrence yields a one-element list.
+    let resp = cli
+        .get("/people")
+        .query("data[people]", &"alice")
+        .send()
+        .await;
+    resp.assert_status_is_ok();
+    resp.assert_json(serde_json::json!({ "people": ["alice"] }))
+        .await;
+
+    // Omitting the field yields an empty list.
+    let resp = cli.get("/people").send().await;
+    resp.assert_status_is_ok();
+    resp.assert_json(serde_json::json!({ "people": [] }))
+        .await;
 }
 
 #[tokio::test]
@@ -223,10 +355,7 @@ async fn query_object_flatten() {
     #[OpenApi]
     impl Api {
         #[oai(path = "/list", method = "get")]
-        async fn list(
-            &self,
-            #[oai(style = "deep_object")] query: Query<Query1>,
-        ) -> Json<Value> {
+        async fn list(&self, #[oai(style = "deep_object")] query: Query<Query1>) -> Json<Value> {
             Json(query.0.to_json().unwrap())
         }
     }
@@ -316,4 +445,29 @@ async fn query_object_explode_with_enum_and_skip() {
         "dedup": null,
     }))
     .await;
+}
+
+#[tokio::test]
+async fn zzz_dump_spec() {
+    #[derive(Object)]
+    #[oai(query)]
+    struct PageQuery {
+        #[oai(default)]
+        page: u32,
+        limit: u32,
+        dedup: Option<String>,
+    }
+
+    struct Api;
+
+    #[OpenApi]
+    impl Api {
+        #[oai(path = "/page", method = "get")]
+        async fn page(&self, q: Query<PageQuery>) -> Json<Value> {
+            Json(q.0.dedup.into())
+        }
+    }
+
+    let ep = OpenApiService::new(Api, "test", "1.0");
+    println!("SPEC_START{}SPEC_END", ep.spec());
 }
