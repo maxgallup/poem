@@ -15,6 +15,9 @@ categories = ["network-programming", "asynchronous"]
 [lib]
 proc-macro = true
 
+[features]
+client = []
+
 [dependencies]
 darling.workspace = true
 proc-macro-crate.workspace = true

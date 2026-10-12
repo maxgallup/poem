@@ -116,6 +116,8 @@
 //! | prost-wkt-types    | Integrate with the [`prost-wkt-types` crate](https://crates.io/crates/prost-wkt-types) |
 //! | static-files       | Support for static file response                                                       |
 //! | websocket          | Support for websocket                                                                  |
+//! | client             | Add OpenAPI client support                                                             |
+//! | client-reqwest     | Add a [`reqwest`](https://crates.io/crates/reqwest) transport for the OpenAPI client   |
 //! | sonic-rs           | Uses [`sonic-rs`](https://github.com/cloudwego/sonic-rs) instead of `serde_json`. Pls, checkout `sonic-rs` requirements to properly enable `sonic-rs` capabilities |
 
 #![doc(html_favicon_url = "https://raw.githubusercontent.com/poem-web/poem/master/favicon.ico")]
@@ -131,6 +133,9 @@
 pub mod macros;
 
 pub mod auth;
+#[cfg(feature = "client")]
+#[cfg_attr(docsrs, doc(cfg(feature = "client")))]
+pub mod client;
 pub mod error;
 pub mod param;
 pub mod payload;
