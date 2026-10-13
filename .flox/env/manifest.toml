@@ -18,9 +18,9 @@ just.pkg-path = "just"
 just.outputs = "all"
 
 # Platform-specific packages
-libiconv.pkg-path = "libiconv"
-libiconv.systems = ["aarch64-darwin", "x86_64-darwin"]
-libiconv.outputs = "all"
+# libiconv.pkg-path = "libiconv"
+# libiconv.systems = ["aarch64-darwin", "x86_64-darwin"]
+# libiconv.outputs = "all"
 protobuf.pkg-path = "protobuf"
 
 ## Environment Variables ---------------------------------------------

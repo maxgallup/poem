@@ -12,14 +12,6 @@
         "pkg-path": "just",
         "outputs": "all"
       },
-      "libiconv": {
-        "pkg-path": "libiconv",
-        "systems": [
-          "aarch64-darwin",
-          "x86_64-darwin"
-        ],
-        "outputs": "all"
-      },
       "openssl": {
         "pkg-path": "openssl",
         "outputs": "all"
@@ -111,39 +103,6 @@
         "out": "/nix/store/lx4f4lvm5hrbxbils30ssjal1jz9yxgh-gcc-wrapper-15.2.0"
       },
       "system": "aarch64-linux",
-      "group": "toplevel",
-      "priority": 5
-    },
-    {
-      "attr_path": "gcc",
-      "broken": false,
-      "derivation": "/nix/store/160s4m0c6rbs4apvbzb068q4ldw49618-gcc-wrapper-15.2.0.drv",
-      "description": "GNU Compiler Collection, version 15.2.0 (wrapper script)",
-      "install_id": "gcc",
-      "license": "GPL-3.0-or-later",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=d407951447dcd00442e97087bf374aad70c04cea",
-      "name": "gcc-wrapper-15.2.0",
-      "pname": "gcc",
-      "rev": "d407951447dcd00442e97087bf374aad70c04cea",
-      "rev_count": 1027867,
-      "rev_date": "2026-07-05T04:06:12Z",
-      "scrape_date": "2026-07-06T04:09:01.501603Z",
-      "stabilities": [
-        "staging",
-        "unstable"
-      ],
-      "unfree": false,
-      "version": "15.2.0",
-      "outputs_to_install": [
-        "man",
-        "out"
-      ],
-      "outputs": {
-        "info": "/nix/store/y0vblnaz09f5hws1pnx59fzvlpcrd1zn-gcc-wrapper-15.2.0-info",
-        "man": "/nix/store/zhrv9vafnz3agiwznkij8p36fpa17py7-gcc-wrapper-15.2.0-man",
-        "out": "/nix/store/a9dhskc2ladjh7aph2z1b7x0lsdl506l-gcc-wrapper-15.2.0"
-      },
-      "system": "x86_64-darwin",
       "group": "toplevel",
       "priority": 5
     },
@@ -254,39 +213,6 @@
     {
       "attr_path": "just",
       "broken": false,
-      "derivation": "/nix/store/kpm5synzhc0arj6wbp5ciadq3wgb0xl7-just-1.55.1.drv",
-      "description": "Handy way to save and run project-specific commands",
-      "install_id": "just",
-      "license": "CC0-1.0",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=d407951447dcd00442e97087bf374aad70c04cea",
-      "name": "just-1.55.1",
-      "pname": "just",
-      "rev": "d407951447dcd00442e97087bf374aad70c04cea",
-      "rev_count": 1027867,
-      "rev_date": "2026-07-05T04:06:12Z",
-      "scrape_date": "2026-07-06T04:09:22.248655Z",
-      "stabilities": [
-        "staging",
-        "unstable"
-      ],
-      "unfree": false,
-      "version": "1.55.1",
-      "outputs_to_install": [
-        "man",
-        "out"
-      ],
-      "outputs": {
-        "doc": "/nix/store/4hr1i7iizrvxl5qc9xhq12gscgs0b1nl-just-1.55.1-doc",
-        "man": "/nix/store/4fz7kgnf4llinmji6nqbd3h20w1v0661-just-1.55.1-man",
-        "out": "/nix/store/66nwz7gqzp6wkw8r9x23z45lf7ysc74b-just-1.55.1"
-      },
-      "system": "x86_64-darwin",
-      "group": "toplevel",
-      "priority": 5
-    },
-    {
-      "attr_path": "just",
-      "broken": false,
       "derivation": "/nix/store/5f1667rpw512ssdlxc9z34lm39gr2qrn-just-1.55.1.drv",
       "description": "Handy way to save and run project-specific commands",
       "install_id": "just",
@@ -314,76 +240,6 @@
         "out": "/nix/store/4q0ksvaggh0zb50jmff9vr929b0z3r6f-just-1.55.1"
       },
       "system": "x86_64-linux",
-      "group": "toplevel",
-      "priority": 5
-    },
-    {
-      "attr_path": "libiconv",
-      "broken": false,
-      "derivation": "/nix/store/irkbdz86bxcbd2c206gqx4m1csj09g53-libiconv-113.drv",
-      "description": "Iconv(3) implementation",
-      "install_id": "libiconv",
-      "license": "[ BSD-2-Clause, BSD-3-Clause, APSL-1.0 ]",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=d407951447dcd00442e97087bf374aad70c04cea",
-      "name": "libiconv-113",
-      "pname": "libiconv",
-      "rev": "d407951447dcd00442e97087bf374aad70c04cea",
-      "rev_count": 1027867,
-      "rev_date": "2026-07-05T04:06:12Z",
-      "scrape_date": "2026-07-06T03:13:14.028699Z",
-      "stabilities": [
-        "staging",
-        "unstable"
-      ],
-      "unfree": false,
-      "version": "113",
-      "outputs_to_install": [
-        "out",
-        "out",
-        "out",
-        "out",
-        "out",
-        "out",
-        "out",
-        "out",
-        "out"
-      ],
-      "outputs": {
-        "dev": "/nix/store/x9zqgwph8i92jppic911kwpwld30drwn-libiconv-113-dev",
-        "out": "/nix/store/qla3pimj2nqrklkhar0yv7127fcd1v86-libiconv-113"
-      },
-      "system": "aarch64-darwin",
-      "group": "toplevel",
-      "priority": 5
-    },
-    {
-      "attr_path": "libiconv",
-      "broken": false,
-      "derivation": "/nix/store/b1m5y0h4r411yfvmfacyca5jsjv609r8-libiconv-113.drv",
-      "description": "Iconv(3) implementation",
-      "install_id": "libiconv",
-      "license": "[ BSD-2-Clause, BSD-3-Clause, APSL-1.0 ]",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=d407951447dcd00442e97087bf374aad70c04cea",
-      "name": "libiconv-113",
-      "pname": "libiconv",
-      "rev": "d407951447dcd00442e97087bf374aad70c04cea",
-      "rev_count": 1027867,
-      "rev_date": "2026-07-05T04:06:12Z",
-      "scrape_date": "2026-07-06T04:09:24.042301Z",
-      "stabilities": [
-        "staging",
-        "unstable"
-      ],
-      "unfree": false,
-      "version": "113",
-      "outputs_to_install": [
-        "out"
-      ],
-      "outputs": {
-        "dev": "/nix/store/zdqs550dy4kdpfigwl7rbyyljnikrajs-libiconv-113-dev",
-        "out": "/nix/store/slbk44rhj2im5spq903ik7xpv1phz9rc-libiconv-113"
-      },
-      "system": "x86_64-darwin",
       "group": "toplevel",
       "priority": 5
     },
@@ -463,41 +319,6 @@
         "out": "/nix/store/dqg64dq39jl4n7wy1n7schdv8lrllbry-openssl-3.6.2"
       },
       "system": "aarch64-linux",
-      "group": "toplevel",
-      "priority": 5
-    },
-    {
-      "attr_path": "openssl",
-      "broken": false,
-      "derivation": "/nix/store/f42kz7l0cazp6al9dwsni1wfk1lgsgf5-openssl-3.6.2.drv",
-      "description": "Cryptographic library that implements the SSL and TLS protocols",
-      "install_id": "openssl",
-      "license": "Apache-2.0",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=d407951447dcd00442e97087bf374aad70c04cea",
-      "name": "openssl-3.6.2",
-      "pname": "openssl",
-      "rev": "d407951447dcd00442e97087bf374aad70c04cea",
-      "rev_count": 1027867,
-      "rev_date": "2026-07-05T04:06:12Z",
-      "scrape_date": "2026-07-06T04:09:38.952442Z",
-      "stabilities": [
-        "staging",
-        "unstable"
-      ],
-      "unfree": false,
-      "version": "3.6.2",
-      "outputs_to_install": [
-        "bin",
-        "man"
-      ],
-      "outputs": {
-        "bin": "/nix/store/rngrya5ckvwbiqgvzz04s09vfgm9sa7b-openssl-3.6.2-bin",
-        "dev": "/nix/store/mdzlp6xv9l23m3nnd2pj26rddnd61ghk-openssl-3.6.2-dev",
-        "doc": "/nix/store/pvf9n5028rcf0fmi4hs3jz8bxmnm0gfx-openssl-3.6.2-doc",
-        "man": "/nix/store/xnkyy6k5l5gs1idd1jcsj30hbjnbshjc-openssl-3.6.2-man",
-        "out": "/nix/store/prh2ndzj884k3y0zw7csff344p4zz66c-openssl-3.6.2"
-      },
-      "system": "x86_64-darwin",
       "group": "toplevel",
       "priority": 5
     },
@@ -618,39 +439,6 @@
     {
       "attr_path": "pkg-config",
       "broken": false,
-      "derivation": "/nix/store/1lcn6x97s98c9s8sjxv3k3iv05x4qvrh-pkg-config-wrapper-0.29.2.drv",
-      "description": "Tool that allows packages to find out information about other packages (wrapper script)",
-      "install_id": "pkg-config",
-      "license": "GPL-2.0-or-later",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=d407951447dcd00442e97087bf374aad70c04cea",
-      "name": "pkg-config-wrapper-0.29.2",
-      "pname": "pkg-config",
-      "rev": "d407951447dcd00442e97087bf374aad70c04cea",
-      "rev_count": 1027867,
-      "rev_date": "2026-07-05T04:06:12Z",
-      "scrape_date": "2026-07-06T04:09:50.236832Z",
-      "stabilities": [
-        "staging",
-        "unstable"
-      ],
-      "unfree": false,
-      "version": "0.29.2",
-      "outputs_to_install": [
-        "man",
-        "out"
-      ],
-      "outputs": {
-        "doc": "/nix/store/y9vjqqsrn50xv6mar0ffpk3v90xk9n92-pkg-config-wrapper-0.29.2-doc",
-        "man": "/nix/store/9qd0n1nb130ixha7nn5f0hsnz89nl8vw-pkg-config-wrapper-0.29.2-man",
-        "out": "/nix/store/vplhggifvzl90sqphk9b37bjld2wsd5z-pkg-config-wrapper-0.29.2"
-      },
-      "system": "x86_64-darwin",
-      "group": "toplevel",
-      "priority": 5
-    },
-    {
-      "attr_path": "pkg-config",
-      "broken": false,
       "derivation": "/nix/store/7mq8skw5qdwpypgy5jcci2qxvhmslnvm-pkg-config-wrapper-0.29.2.drv",
       "description": "Tool that allows packages to find out information about other packages (wrapper script)",
       "install_id": "pkg-config",
@@ -751,36 +539,6 @@
     {
       "attr_path": "protobuf",
       "broken": false,
-      "derivation": "/nix/store/rhm70l8g3msw4x6qpwj2llxwvpjajnhi-protobuf-34.1.drv",
-      "description": "Google's data interchange format",
-      "install_id": "protobuf",
-      "license": "BSD-3-Clause",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=d407951447dcd00442e97087bf374aad70c04cea",
-      "name": "protobuf-34.1",
-      "pname": "protobuf",
-      "rev": "d407951447dcd00442e97087bf374aad70c04cea",
-      "rev_count": 1027867,
-      "rev_date": "2026-07-05T04:06:12Z",
-      "scrape_date": "2026-07-06T04:09:52.418667Z",
-      "stabilities": [
-        "staging",
-        "unstable"
-      ],
-      "unfree": false,
-      "version": "34.1",
-      "outputs_to_install": [
-        "out"
-      ],
-      "outputs": {
-        "out": "/nix/store/ad4jv44ly3b99p8r5h7xii9f74mq1h3x-protobuf-34.1"
-      },
-      "system": "x86_64-darwin",
-      "group": "toplevel",
-      "priority": 5
-    },
-    {
-      "attr_path": "protobuf",
-      "broken": false,
       "derivation": "/nix/store/dzmr6aw72i54xqz42qw2bnxdi83an71x-protobuf-34.1.drv",
       "description": "Google's data interchange format",
       "install_id": "protobuf",
@@ -867,36 +625,6 @@
         "out": "/nix/store/1ghz0g8a4p12amgzdsn0g7s47vzawxph-rustup-1.29.0"
       },
       "system": "aarch64-linux",
-      "group": "toplevel",
-      "priority": 5
-    },
-    {
-      "attr_path": "rustup",
-      "broken": false,
-      "derivation": "/nix/store/4i8mjzybr1n5gy8a4bhjg0md4wy0r3yp-rustup-1.29.0.drv",
-      "description": "Rust toolchain installer",
-      "install_id": "rustup",
-      "license": "[ Apache-2.0, MIT ]",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=d407951447dcd00442e97087bf374aad70c04cea",
-      "name": "rustup-1.29.0",
-      "pname": "rustup",
-      "rev": "d407951447dcd00442e97087bf374aad70c04cea",
-      "rev_count": 1027867,
-      "rev_date": "2026-07-05T04:06:12Z",
-      "scrape_date": "2026-07-06T04:11:03.694868Z",
-      "stabilities": [
-        "staging",
-        "unstable"
-      ],
-      "unfree": false,
-      "version": "1.29.0",
-      "outputs_to_install": [
-        "out"
-      ],
-      "outputs": {
-        "out": "/nix/store/lvm2155pfw1b3a9g8cij5g7vx2dk4v9f-rustup-1.29.0"
-      },
-      "system": "x86_64-darwin",
       "group": "toplevel",
       "priority": 5
     },

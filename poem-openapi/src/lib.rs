@@ -216,6 +216,22 @@ pub use poem_openapi_derive::Union;
 pub use poem_openapi_derive::Webhook;
 pub use validation::Validator;
 
+// Derive macros cannot see this crate's features, so they wrap YAML trait
+// impls in this macro, which drops them when the `yaml` feature is disabled.
+#[cfg(feature = "yaml")]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __yaml_impls {
+    ($($tt:tt)*) => { $($tt)* };
+}
+
+#[cfg(not(feature = "yaml"))]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __yaml_impls {
+    ($($tt:tt)*) => {};
+}
+
 #[doc(hidden)]
 pub mod __private {
     pub use indexmap;
@@ -224,5 +240,7 @@ pub mod __private {
     pub use serde;
     pub use serde_json;
 
-    pub use crate::{auth::CheckerReturn, base::UrlQuery, path_util::join_path};
+    pub use crate::{
+        __yaml_impls as yaml_impls, auth::CheckerReturn, base::UrlQuery, path_util::join_path,
+    };
 }

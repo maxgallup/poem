@@ -43,6 +43,7 @@ async fn spec_endpoints() {
         None,
     )
     .await;
+    #[cfg(feature = "yaml")]
     assert_document(
         service.spec_endpoint_yaml(),
         "/?download=1",

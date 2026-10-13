@@ -10,12 +10,16 @@ mod json;
 mod plain_text;
 mod response;
 mod xml;
+#[cfg(feature = "yaml")]
 mod yaml;
 
 use std::future::Future;
 
 use poem::{Request, RequestBody, Result};
 
+#[cfg(feature = "yaml")]
+#[cfg_attr(docsrs, doc(cfg(feature = "yaml")))]
+pub use self::yaml::Yaml;
 pub use self::{
     attachment::{Attachment, AttachmentType},
     base64_payload::Base64,
@@ -27,7 +31,6 @@ pub use self::{
     plain_text::PlainText,
     response::Response,
     xml::Xml,
-    yaml::Yaml,
 };
 use crate::registry::{MetaMediaType, MetaResponse, MetaResponses, MetaSchemaRef, Registry};
 

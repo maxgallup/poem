@@ -265,13 +265,16 @@ async fn query_object_list_form() {
     // Omitting the field entirely yields an empty list.
     let resp = cli.get("/people").send().await;
     resp.assert_status_is_ok();
-    resp.assert_json(serde_json::json!({ "people": [] }))
-        .await;
+    resp.assert_json(serde_json::json!({ "people": [] })).await;
 
     // Comma-separated values are NOT split under the (default) exploded form
     // style: the whole string is a single element. Arrays must use repeated
     // keys instead.
-    let resp = cli.get("/people").query("people", &"alice,bob").send().await;
+    let resp = cli
+        .get("/people")
+        .query("people", &"alice,bob")
+        .send()
+        .await;
     resp.assert_status_is_ok();
     resp.assert_json(serde_json::json!({ "people": ["alice,bob"] }))
         .await;
@@ -329,8 +332,7 @@ async fn query_object_list_deep_object() {
     // Omitting the field yields an empty list.
     let resp = cli.get("/people").send().await;
     resp.assert_status_is_ok();
-    resp.assert_json(serde_json::json!({ "people": [] }))
-        .await;
+    resp.assert_json(serde_json::json!({ "people": [] })).await;
 }
 
 #[tokio::test]

@@ -7,10 +7,12 @@ use poem::{
     http::{HeaderValue, StatusCode},
     test::TestClient,
 };
+#[cfg(feature = "yaml")]
+use poem_openapi::payload::Yaml;
 use poem_openapi::{
     ApiResponse, Object, OpenApi, OpenApiService,
     param::Query,
-    payload::{Binary, Json, Payload, PlainText, Yaml},
+    payload::{Binary, Json, Payload, PlainText},
     registry::{
         MetaApi, MetaMediaType, MetaResponse, MetaResponses, MetaSchema, MetaSchemaRef, Registry,
     },
@@ -37,6 +39,7 @@ enum MyResponse {
     #[oai(status = 400)]
     BadRequest(Json<BadRequestResult>),
     /// yaml response
+    #[cfg(feature = "yaml")]
     #[oai(status = 400)]
     BadRequestYaml(Yaml<BadRequestResult>),
     Default(StatusCode, PlainText<String>),
@@ -44,50 +47,51 @@ enum MyResponse {
 
 #[test]
 fn meta() {
-    assert_eq!(
-        MyResponse::meta(),
-        MetaResponses {
-            responses: vec![
-                MetaResponse {
-                    description: "Ok",
-                    status: Some(200),
-                    status_range: None,
-                    content: vec![],
-                    headers: vec![]
-                },
-                MetaResponse {
-                    description: "A\nB\n\nC",
-                    status: Some(400),
-                    status_range: None,
-                    content: vec![MetaMediaType {
-                        content_type: "application/json; charset=utf-8",
-                        schema: MetaSchemaRef::Reference("BadRequestResult".to_string())
-                    }],
-                    headers: vec![]
-                },
-                MetaResponse {
-                    description: "yaml response",
-                    status: Some(400),
-                    status_range: None,
-                    content: vec![MetaMediaType {
-                        content_type: "application/yaml; charset=utf-8",
-                        schema: MetaSchemaRef::Reference("BadRequestResult".to_string())
-                    }],
-                    headers: vec![]
-                },
-                MetaResponse {
-                    description: "",
-                    status: None,
-                    status_range: None,
-                    content: vec![MetaMediaType {
-                        content_type: "text/plain; charset=utf-8",
-                        schema: MetaSchemaRef::Inline(Box::new(MetaSchema::new("string"))),
-                    }],
-                    headers: vec![]
-                }
-            ],
+    #[allow(unused_mut)]
+    let mut responses = vec![
+        MetaResponse {
+            description: "Ok",
+            status: Some(200),
+            status_range: None,
+            content: vec![],
+            headers: vec![],
+        },
+        MetaResponse {
+            description: "A\nB\n\nC",
+            status: Some(400),
+            status_range: None,
+            content: vec![MetaMediaType {
+                content_type: "application/json; charset=utf-8",
+                schema: MetaSchemaRef::Reference("BadRequestResult".to_string()),
+            }],
+            headers: vec![],
+        },
+        MetaResponse {
+            description: "",
+            status: None,
+            status_range: None,
+            content: vec![MetaMediaType {
+                content_type: "text/plain; charset=utf-8",
+                schema: MetaSchemaRef::Inline(Box::new(MetaSchema::new("string"))),
+            }],
+            headers: vec![],
+        },
+    ];
+    #[cfg(feature = "yaml")]
+    responses.insert(
+        2,
+        MetaResponse {
+            description: "yaml response",
+            status: Some(400),
+            status_range: None,
+            content: vec![MetaMediaType {
+                content_type: "application/yaml; charset=utf-8",
+                schema: MetaSchemaRef::Reference("BadRequestResult".to_string()),
+            }],
+            headers: vec![],
         },
     );
+    assert_eq!(MyResponse::meta(), MetaResponses { responses });
 }
 
 #[tokio::test]
@@ -100,7 +104,6 @@ async fn into_response() {
         message: "abc".to_string(),
     };
     let mut json_resp = MyResponse::BadRequest(Json(resp.clone())).into_response();
-    let mut yaml_resp = MyResponse::BadRequestYaml(Yaml(resp.clone())).into_response();
     assert_eq!(
         serde_json::from_slice::<Value>(&json_resp.take_body().into_bytes().await.unwrap())
             .unwrap(),
@@ -109,13 +112,17 @@ async fn into_response() {
             "message": "abc",
         })
     );
-    assert_eq!(
-        serde_yaml::from_slice::<BadRequestResult>(
-            &yaml_resp.take_body().into_bytes().await.unwrap()
-        )
-        .unwrap(),
-        resp.clone()
-    );
+    #[cfg(feature = "yaml")]
+    {
+        let mut yaml_resp = MyResponse::BadRequestYaml(Yaml(resp.clone())).into_response();
+        assert_eq!(
+            serde_yaml::from_slice::<BadRequestResult>(
+                &yaml_resp.take_body().into_bytes().await.unwrap()
+            )
+            .unwrap(),
+            resp.clone()
+        );
+    }
     assert_eq!(json_resp.status(), StatusCode::BAD_REQUEST);
 
     let mut resp = MyResponse::Default(StatusCode::BAD_GATEWAY, PlainText("abcdef".to_string()))

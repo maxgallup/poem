@@ -96,7 +96,8 @@ impl UrlQuery {
     /// case-insensitively.
     pub fn get_all_case<'a, 'b: 'a>(&'b self, name: &'a str, ignore_case: bool) -> Vec<&'b String> {
         if ignore_case {
-            self.get_all_by(move |n| name.eq_ignore_ascii_case(n)).collect()
+            self.get_all_by(move |n| name.eq_ignore_ascii_case(n))
+                .collect()
         } else {
             self.get_all(name).collect()
         }

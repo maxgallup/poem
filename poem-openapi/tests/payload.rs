@@ -55,14 +55,9 @@ async fn response_wrapper() {
 #[test]
 fn payload_response_metadata() {
     use poem_openapi::{
-        payload::{Base64, Binary, EventStream, Html, Payload, PlainText, Xml, Yaml},
+        payload::{Base64, Binary, EventStream, Html, Payload, PlainText, Xml},
         registry::{MetaMediaType, MetaResponse, MetaResponses},
     };
-
-    #[derive(poem_openapi::Object)]
-    struct TestPayload {
-        value: i32,
-    }
 
     fn check<T: ApiResponse + Payload>(content_type: &'static str) {
         assert_eq!(
@@ -84,7 +79,17 @@ fn payload_response_metadata() {
 
     check::<Json<i32>>("application/json; charset=utf-8");
     check::<Xml<i32>>("application/xml; charset=utf-8");
-    check::<Yaml<TestPayload>>("application/yaml; charset=utf-8");
+    #[cfg(feature = "yaml")]
+    {
+        use poem_openapi::payload::Yaml;
+
+        #[derive(poem_openapi::Object)]
+        struct TestPayload {
+            value: i32,
+        }
+
+        check::<Yaml<TestPayload>>("application/yaml; charset=utf-8");
+    }
     check::<PlainText<String>>("text/plain; charset=utf-8");
     check::<Html<String>>("text/html; charset=utf-8");
     check::<Binary<Vec<u8>>>("application/octet-stream");
@@ -92,6 +97,7 @@ fn payload_response_metadata() {
     check::<EventStream<futures_util::stream::Empty<i32>>>("text/event-stream");
 }
 
+#[cfg(feature = "yaml")]
 #[derive(poem_openapi::Object)]
 struct TextPayload {
     text: String,
@@ -101,7 +107,9 @@ struct TextPayload {
 async fn request_payloads_preserve_fragmented_unicode() {
     use bytes::Bytes;
     use poem::{Body, Request, RequestBody};
-    use poem_openapi::payload::{Form, ParsePayload, Xml, Yaml};
+    #[cfg(feature = "yaml")]
+    use poem_openapi::payload::Yaml;
+    use poem_openapi::payload::{Form, ParsePayload, Xml};
     use serde_json::{Value, json};
 
     fn fragmented(parts: &'static [&'static [u8]]) -> RequestBody {
@@ -129,11 +137,16 @@ async fn request_payloads_preserve_fragmented_unicode() {
     .unwrap();
     assert_eq!(value, json!({ "text": { "$text": "你" } }));
 
-    let Yaml(value) =
-        Yaml::<TextPayload>::from_request(&req, &mut fragmented(&[b"text: \xe4", b"\xbd\xa0\n"]))
-            .await
-            .unwrap();
-    assert_eq!(value.text, "你");
+    #[cfg(feature = "yaml")]
+    {
+        let Yaml(value) = Yaml::<TextPayload>::from_request(
+            &req,
+            &mut fragmented(&[b"text: \xe4", b"\xbd\xa0\n"]),
+        )
+        .await
+        .unwrap();
+        assert_eq!(value.text, "你");
+    }
 
     #[derive(serde::Deserialize)]
     struct FormData {
@@ -150,9 +163,11 @@ async fn request_payloads_preserve_fragmented_unicode() {
 async fn request_payloads_preserve_empty_and_error_behavior() {
     use bytes::Bytes;
     use poem::{Body, Request, RequestBody, error::ReadBodyError};
+    #[cfg(feature = "yaml")]
+    use poem_openapi::payload::Yaml;
     use poem_openapi::{
         error::ParseRequestPayloadError,
-        payload::{Form, ParsePayload, Xml, Yaml},
+        payload::{Form, ParsePayload, Xml},
     };
     use serde_json::Value;
 
@@ -183,8 +198,11 @@ async fn request_payloads_preserve_empty_and_error_behavior() {
     errors::<Json<Value>>(b"{").await;
     errors::<Json<Value>>(b"\"\xff\"").await;
     errors::<Xml<Value>>(b"<root>").await;
-    errors::<Yaml<TextPayload>>(b"[invalid").await;
-    errors::<Yaml<TextPayload>>(b"text: \xff").await;
+    #[cfg(feature = "yaml")]
+    {
+        errors::<Yaml<TextPayload>>(b"[invalid").await;
+        errors::<Yaml<TextPayload>>(b"text: \xff").await;
+    }
     errors::<Form<std::collections::BTreeMap<String, u32>>>(b"number=invalid").await;
 
     let req = Request::default();
@@ -201,22 +219,25 @@ async fn request_payloads_preserve_empty_and_error_behavior() {
         Xml::<Value>::from_request(&req, &mut body).await.unwrap().0,
         Value::Null
     );
-    let mut body = RequestBody::new(Body::empty());
-    let err = Yaml::<TextPayload>::from_request(&req, &mut body)
-        .await
-        .err()
-        .unwrap();
-    let expected =
-        <TextPayload as poem_openapi::types::ParseFromYAML>::parse_from_yaml(Some(Value::Null))
+    #[cfg(feature = "yaml")]
+    {
+        let mut body = RequestBody::new(Body::empty());
+        let err = Yaml::<TextPayload>::from_request(&req, &mut body)
+            .await
             .err()
-            .unwrap()
-            .into_message();
-    assert_eq!(
-        err.downcast_ref::<ParseRequestPayloadError>()
-            .unwrap()
-            .reason,
-        expected
-    );
+            .unwrap();
+        let expected =
+            <TextPayload as poem_openapi::types::ParseFromYAML>::parse_from_yaml(Some(Value::Null))
+                .err()
+                .unwrap()
+                .into_message();
+        assert_eq!(
+            err.downcast_ref::<ParseRequestPayloadError>()
+                .unwrap()
+                .reason,
+            expected
+        );
+    }
 
     // Invalid UTF-8 has historically been parsed as an empty XML string.
     let mut body = RequestBody::new(Body::from(b"<root>\xff</root>".as_slice()));

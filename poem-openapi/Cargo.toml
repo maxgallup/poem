@@ -30,6 +30,7 @@ cookie = ["poem/cookie"]
 camino = ["dep:camino"]
 ulid = ["dep:ulid"]
 jiff = ["dep:jiff"]
+yaml = ["dep:serde_yaml", "poem/yaml"]
 
 [dependencies]
 poem-openapi-derive.workspace = true
@@ -38,12 +39,10 @@ poem = { workspace = true, default-features = true, features = [
   "tempfile",
   "sse",
   "xml",
-  "yaml",
 ] }
 
 tokio = { workspace = true, features = ["fs"] }
 serde_json.workspace = true
-serde_yaml.workspace = true
 quick-xml.workspace = true
 serde_urlencoded.workspace = true
 base64.workspace = true
@@ -89,6 +88,7 @@ sqlx = { version = "0.9.0", features = [
 ], optional = true }
 camino = { version = "1.2.6", optional = true }
 ulid = { version = "3.0.0", optional = true }
+serde_yaml = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

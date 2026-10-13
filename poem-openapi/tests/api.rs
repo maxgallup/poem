@@ -1088,7 +1088,6 @@ async fn parameter_style_none() {
 #[tokio::test]
 async fn info_extensions() {
     use serde_json::Value as JsonVal;
-    use serde_yaml::Value as YamlVal;
 
     #[allow(dead_code)]
     struct Api;
@@ -1103,14 +1102,9 @@ async fn info_extensions() {
     }
 
     let example_string = JsonVal::String("Example".to_string());
-    let example_string_yaml = YamlVal::String("Example".to_string());
     let example_array = JsonVal::Array(vec![
         JsonVal::String("B2B".to_string()),
         JsonVal::String("B2C".to_string()),
-    ]);
-    let example_array_yaml = YamlVal::Sequence(vec![
-        YamlVal::String("B2B".to_string()),
-        YamlVal::String("B2C".to_string()),
     ]);
 
     let api = OpenApiService::new(Api {}, "test", "1.0")
@@ -1132,18 +1126,28 @@ async fn info_extensions() {
     }
 
     // check YAML:
-    let spec_parsed: YamlVal =
-        serde_yaml::from_str(&api.spec_yaml()).expect("Generated invalid YAML");
-    if let YamlVal::Mapping(spec_root) = spec_parsed {
-        let info = spec_root.get("info").expect("YAML Spec has no info");
-        if let YamlVal::Mapping(spec_info) = info {
-            assert_eq!(spec_info.get("x-category"), Some(&example_string_yaml));
-            assert_eq!(spec_info.get("x-segment"), Some(&example_array_yaml));
+    #[cfg(feature = "yaml")]
+    {
+        use serde_yaml::Value as YamlVal;
+
+        let example_string_yaml = YamlVal::String("Example".to_string());
+        let example_array_yaml = YamlVal::Sequence(vec![
+            YamlVal::String("B2B".to_string()),
+            YamlVal::String("B2C".to_string()),
+        ]);
+        let spec_parsed: YamlVal =
+            serde_yaml::from_str(&api.spec_yaml()).expect("Generated invalid YAML");
+        if let YamlVal::Mapping(spec_root) = spec_parsed {
+            let info = spec_root.get("info").expect("YAML Spec has no info");
+            if let YamlVal::Mapping(spec_info) = info {
+                assert_eq!(spec_info.get("x-category"), Some(&example_string_yaml));
+                assert_eq!(spec_info.get("x-segment"), Some(&example_array_yaml));
+            } else {
+                panic!("Spec info isn't a YAML mapping");
+            }
         } else {
-            panic!("Spec info isn't a YAML mapping");
+            panic!("Spec root isn't a YAML mapping");
         }
-    } else {
-        panic!("Spec root isn't a YAML mapping");
     }
 }
 

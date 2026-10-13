@@ -592,6 +592,8 @@ impl<T, W> OpenApiService<T, W> {
     }
 
     /// Create an endpoint to serve the open api specification as YAML.
+    #[cfg(feature = "yaml")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "yaml")))]
     pub fn spec_endpoint_yaml(&self) -> impl Endpoint + 'static
     where
         T: OpenApi,
@@ -692,6 +694,8 @@ impl<T, W> OpenApiService<T, W> {
     }
 
     /// Returns the OAS specification file as YAML.
+    #[cfg(feature = "yaml")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "yaml")))]
     pub fn spec_yaml(&self) -> String
     where
         T: OpenApi,

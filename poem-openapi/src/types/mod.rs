@@ -146,6 +146,8 @@ pub trait ParseFromXML: Sized + Type {
 }
 
 /// Represents a type that can parsing from YAML.
+#[cfg(feature = "yaml")]
+#[cfg_attr(docsrs, doc(cfg(feature = "yaml")))]
 pub trait ParseFromYAML: Sized + Type {
     /// Parse from [`serde_json::Value`].
     fn parse_from_yaml(value: Option<Value>) -> ParseResult<Self>;
@@ -186,7 +188,10 @@ pub trait ParseFromParameter: Sized + Type {
     /// this to bind their fields from the query string according to the
     /// parameter [`style`](crate::ParameterStyle), for example `deepObject`
     /// (`?filter[name]=x&filter[age]=5`) or `form` (`?name=x&age=5`).
-    fn parse_from_query(query: &UrlQuery, options: &ExtractParamOptions<Self>) -> ParseResult<Self> {
+    fn parse_from_query(
+        query: &UrlQuery,
+        options: &ExtractParamOptions<Self>,
+    ) -> ParseResult<Self> {
         let values = query.get_all_case(options.name, options.ignore_case);
         if options.explode {
             Self::parse_from_parameters(values)
@@ -256,6 +261,8 @@ pub trait ToXML: Type {
 }
 
 /// Represents a type that can converted to YAML value.
+#[cfg(feature = "yaml")]
+#[cfg_attr(docsrs, doc(cfg(feature = "yaml")))]
 pub trait ToYAML: Type {
     /// Convert this value to [`Value`].
     fn to_yaml(&self) -> Option<Value>;
@@ -314,6 +321,7 @@ impl<T: ToXML> ToXML for &T {
     }
 }
 
+#[cfg(feature = "yaml")]
 impl<T: ToYAML> ToYAML for &T {
     fn to_yaml(&self) -> Option<Value> {
         T::to_yaml(self)
@@ -492,6 +500,7 @@ impl<T: ToXML> ToXML for Box<T> {
     }
 }
 
+#[cfg(feature = "yaml")]
 impl<T: ToYAML> ToYAML for Box<T> {
     fn to_yaml(&self) -> Option<Value> {
         self.as_ref().to_yaml()

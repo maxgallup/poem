@@ -7,6 +7,6 @@ publish.workspace = true
 
 [dependencies]
 poem.workspace = true
-poem-openapi.workspace = true
+poem-openapi = { workspace = true, features = ["yaml"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tracing-subscriber.workspace = true
